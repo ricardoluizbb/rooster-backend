@@ -1,0 +1,16 @@
+version: '3.7'
+
+services:
+  postgresd:
+    image: postgres:9.6
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=admin123
+      - POSTGRES_DB=rooster-local
+    networks:
+      - intranet
+
+networks:
+  intranet:
