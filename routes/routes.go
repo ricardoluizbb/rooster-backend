@@ -4,8 +4,8 @@ import (
 	"log"
 	"time-tracker-backend/account"
 	"time-tracker-backend/config"
+	manager "time-tracker-backend/controllers"
 	"time-tracker-backend/database"
-	"time-tracker-backend/manager"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"

@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 	"time-tracker-backend/account"
-	"time-tracker-backend/manager"
+	manager "time-tracker-backend/controllers"
 	"time-tracker-backend/x/xjwt"
 
 	"github.com/360EntSecGroup-Skylar/excelize"
