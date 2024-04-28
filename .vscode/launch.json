@@ -16,7 +16,8 @@
             ],
             "env": {
               "CLOWN_MAGIC_LINK_URL": "http://localhost:8081/magic-link",
-              "CLOWN_DATABASE_DSN": "postgres://postgres:admin123@localhost:5432/rooster-local?sslmode=disable"
+              "CLOWN_DATABASE_DSN": "postgres://postgres:admin123@localhost:5432/rooster-local?sslmode=disable",
+              "CLOWN_HTTP_PORT": ":8080"
             }
           },
           {
