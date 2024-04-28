@@ -6,16 +6,6 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "time-tracker",
-            "type": "go",
-            "request": "launch",
-            "mode": "debug",
-            "program": "${workspaceFolder}",
-            "env": {
-              "CLOWN_DATABASE_DSN": "postgres://postgres:admin123@localhost:5432/rooster-local?sslmode=disable"
-            }
-        },
-        {
             "name": "http",
             "type": "go",
             "request": "launch",
