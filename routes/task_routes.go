@@ -426,7 +426,7 @@ func (tr *TaskRoutes) MagicLink(c *gin.Context) {
 	c.SetCookie("token", token, 9999, "/", "localhost", false, true)
 	c.SetCookie("refreshToken", refreshToken, 9999, "/", "localhost", false, true)
 
-	c.Redirect(http.StatusFound, "http://localhost:9000/board")
+	c.Redirect(http.StatusFound, "http://localhost:9000/")
 }
 
 // Login godoc
@@ -455,7 +455,6 @@ func (tr *MobileRoutes) MagicLinkMobile(c *gin.Context) {
 	c.SetCookie("token", token, 9999, "/", "localhost", false, true)
 	c.SetCookie("refreshToken", refreshToken, 9999, "/", "localhost", false, true)
 
-	// c.Redirect(http.StatusFound, "http://localhost:9000/board")
 	c.JSON(http.StatusNoContent, nil)
 }
 
