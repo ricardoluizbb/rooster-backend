@@ -34,6 +34,6 @@ func SetupRoutes() {
 	cfg.AllowOrigins = []string{"http://localhost:9000"}
 	r.Use(cors.New(cfg))
 	SetupTaskRoutes(r, taskManager, accountManager)
-	SetupMobileRoutes(r, accountManager)
+	// SetupMobileRoutes(r, accountManager)
 	r.Run(config.HttpPort())
 }

@@ -1,17 +1,13 @@
 package account
 
 import (
+	"context"
 	"errors"
-	"fmt"
-	"net/url"
 	"time"
-	"time-tracker-backend/config"
 	"time-tracker-backend/x/xjwt"
 
 	"github.com/golang-jwt/jwt/v5"
 )
-
-var hmacSampleSecret = []byte("secretKeyHere") //TODO: em variavel de ambiente
 
 type AccountManager struct {
 	Persistence AccountPersistence
@@ -23,23 +19,18 @@ func NewManager(persistence AccountPersistence) *AccountManager {
 	}
 }
 
-func (p *AccountManager) CreateUser(name, email string) (string, error) {
-	us, err := NewUser(name, email, "")
+func (p *AccountManager) Registration(ctx context.Context, name, email, password string) (string, string, error) {
+	us, err := NewUser(name, email, "", password)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	err = p.Persistence.Create(us)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	magicLink, err := GenerateMagicLink(us.ID, us.Email)
-	if err != nil {
-		return "", err
-	}
-
-	return magicLink, nil
+	return p.GenerateToken(ctx, us)
 }
 
 type JwTT struct {
@@ -47,19 +38,19 @@ type JwTT struct {
 	RefreshToken string
 }
 
-func (p *AccountManager) Login(email string) (string, error) {
+func (p *AccountManager) Login(ctx context.Context, email string, password string) (string, string, error) {
 	us, err := p.Persistence.Get(email)
 	// validar erro de usuario nao existe
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	magicLink, err := GenerateMagicLink(us.ID, us.Email)
-	if err != nil {
-		return "", err
+	// TODO: adicionar criptografia
+	if us.Password != password {
+		return "", "", errors.New("password does not match")
 	}
 
-	return magicLink, nil
+	return p.GenerateToken(ctx, us)
 }
 
 func (p *AccountManager) RefreshToken(refreshToken string) (string, string, error) {
@@ -94,57 +85,28 @@ func (p *AccountManager) RefreshToken(refreshToken string) (string, string, erro
 	return token, refreshToken, nil
 }
 
-func (p *AccountManager) MagicLink(magicToken string) (tokenString string, refreshToken string, err error) {
-	err = xjwt.VerifyToken(magicToken)
+func (p *AccountManager) GenerateToken(ctx context.Context, us *User) (tokenString string, refreshToken string, err error) {
+	token, refreshToken, err := xjwt.TokenAndRefreshToken(jwt.MapClaims{
+		"id":    us.ID,
+		"name":  us.Name,
+		"email": us.Email,
+		"kind":  "session",
+	}, time.Hour*2, time.Hour*24)
 	if err != nil {
-		return
+		return "", "", err
 	}
 
-	token, err := jwt.Parse(magicToken, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		return hmacSampleSecret, nil
-	})
+	us.Token = token
+	us.RefreshToken = refreshToken
+
+	err = p.Persistence.Save(us)
 	if err != nil {
-		return
+		return "", "", err
 	}
 
-	if claims, ok := token.Claims.(jwt.MapClaims); ok {
-		accountEmail := fmt.Sprintf("%v", claims["email"])
-
-		us, err := p.Persistence.Get(accountEmail)
-		if err != nil {
-			return tokenString, refreshToken, err
-		}
-
-		return xjwt.TokenAndRefreshToken(jwt.MapClaims{
-			"id":    us.ID,
-			"name":  us.Name,
-			"email": us.Email,
-		}, time.Hour*2, time.Hour*24)
-
-	} else {
-		err = errors.New("cannot parse token")
-		return
-	}
+	return token, refreshToken, nil
 }
 
-func GenerateMagicLink(id string, email string) (string, error) {
-	magicToken, err := xjwt.Token(jwt.MapClaims{
-		"id":    id,
-		"email": email,
-	}, time.Minute*10, "magic")
-	if err != nil {
-		return "", err
-	}
-
-	u, _ := url.Parse(config.MagicLinkUrl())
-
-	query := url.Values{}
-	query.Set("magicToken", magicToken)
-
-	u.RawQuery = query.Encode()
-
-	return u.String(), nil
+func (p *AccountManager) GetUserByToken(ctx context.Context, token string) (*User, error) {
+	return p.Persistence.GetUserByToken(token)
 }

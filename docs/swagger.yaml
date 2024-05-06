@@ -1,54 +1,112 @@
 definitions:
-  routes.CreateUserRequest:
+  account.User:
     properties:
+      createdAt:
+        type: string
+      deletedAt:
+        type: string
       email:
         type: string
+      id:
+        type: string
       name:
+        type: string
+      password:
+        type: string
+      refreshToken:
+        type: string
+      token:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  gorm.DeletedAt:
+    properties:
+      time:
+        type: string
+      valid:
+        description: Valid is true if Time is not NULL
+        type: boolean
+    type: object
+  models.RegisteredTime:
+    properties:
+      created_at:
+        type: string
+      deleted_at:
+        $ref: '#/definitions/gorm.DeletedAt'
+      end_time:
+        type: string
+      id:
+        type: string
+      paused:
+        type: boolean
+      start_time:
+        type: string
+      task_id:
+        type: string
+      total_time:
+        type: number
+      updated_at:
+        type: string
+      user_id:
+        type: string
+    type: object
+  models.Task:
+    properties:
+      created_at:
+        type: string
+      deleted_at:
+        $ref: '#/definitions/gorm.DeletedAt'
+      done:
+        type: boolean
+      id:
+        type: string
+      registered_times:
+        items:
+          $ref: '#/definitions/models.RegisteredTime'
+        type: array
+      tag:
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: string
+      user_id:
         type: string
     type: object
   routes.LoginRequest:
     properties:
       email:
         type: string
-    type: object
-  routes.MagicLinkResponse:
-    properties:
-      magicLink:
+      password:
         type: string
+      setCookie:
+        type: boolean
     type: object
-  routes.MagicToken:
+  routes.RegistrationRequest:
     properties:
-      magicToken:
+      confirmPassword:
+        type: string
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        type: string
+      setCookie:
+        type: boolean
+    type: object
+  routes.Tokens:
+    properties:
+      refreshToken:
+        type: string
+      token:
         type: string
     type: object
 info:
   contact: {}
 paths:
-  /v1/create-user:
-    post:
-      consumes:
-      - application/json
-      description: Authenticate user
-      parameters:
-      - description: User infos
-        in: body
-        name: UserRequest
-        required: true
-        schema:
-          $ref: '#/definitions/routes.CreateUserRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/routes.MagicLinkResponse'
-        "404":
-          description: Not Found
-      summary: Perform login
-      tags:
-      - account
-  /v1/login:
+  /api/v1/login:
     post:
       consumes:
       - application/json
@@ -66,29 +124,67 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/routes.MagicLinkResponse'
+            $ref: '#/definitions/routes.Tokens'
         "404":
           description: Not Found
       summary: Perform login
       tags:
       - account
-  /v1/mobile/magic-link:
+  /api/v1/registration:
     post:
       consumes:
       - application/json
       description: Authenticate user
       parameters:
-      - description: token
+      - description: User infos
         in: body
-        name: token
+        name: UserRequest
         required: true
         schema:
-          $ref: '#/definitions/routes.MagicToken'
+          $ref: '#/definitions/routes.RegistrationRequest'
       produces:
       - application/json
       responses:
-        "204":
-          description: No Content
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/routes.Tokens'
+        "404":
+          description: Not Found
+      summary: Perform login
+      tags:
+      - account
+  /api/v1/tasks:
+    get:
+      consumes:
+      - application/json
+      description: List all tasks of a account
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Task'
+            type: array
+        "404":
+          description: Not Found
+      summary: List tasks
+      tags:
+      - tasks
+  /api/v1/whoami:
+    get:
+      consumes:
+      - application/json
+      description: Authenticate user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/account.User'
         "404":
           description: Not Found
       summary: Perform login

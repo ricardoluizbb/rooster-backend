@@ -16,44 +16,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/v1/create-user": {
-            "post": {
-                "description": "Authenticate user",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "account"
-                ],
-                "summary": "Perform login",
-                "parameters": [
-                    {
-                        "description": "User infos",
-                        "name": "UserRequest",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/routes.CreateUserRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/routes.MagicLinkResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    }
-                }
-            }
-        },
-        "/v1/login": {
+        "/api/v1/login": {
             "post": {
                 "description": "Authenticate user",
                 "consumes": [
@@ -81,7 +44,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/routes.MagicLinkResponse"
+                            "$ref": "#/definitions/routes.Tokens"
                         }
                     },
                     "404": {
@@ -90,7 +53,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/v1/mobile/magic-link": {
+        "/api/v1/registration": {
             "post": {
                 "description": "Authenticate user",
                 "consumes": [
@@ -105,18 +68,76 @@ const docTemplate = `{
                 "summary": "Perform login",
                 "parameters": [
                     {
-                        "description": "token",
-                        "name": "token",
+                        "description": "User infos",
+                        "name": "UserRequest",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/routes.MagicToken"
+                            "$ref": "#/definitions/routes.RegistrationRequest"
                         }
                     }
                 ],
                 "responses": {
-                    "204": {
-                        "description": "No Content"
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/routes.Tokens"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    }
+                }
+            }
+        },
+        "/api/v1/tasks": {
+            "get": {
+                "description": "List all tasks of a account",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tasks"
+                ],
+                "summary": "List tasks",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Task"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    }
+                }
+            }
+        },
+        "/api/v1/whoami": {
+            "get": {
+                "description": "Authenticate user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "account"
+                ],
+                "summary": "Perform login",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/account.User"
+                        }
                     },
                     "404": {
                         "description": "Not Found"
@@ -126,13 +147,116 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "routes.CreateUserRequest": {
+        "account.User": {
             "type": "object",
             "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "deletedAt": {
+                    "type": "string"
+                },
                 "email": {
                     "type": "string"
                 },
+                "id": {
+                    "type": "string"
+                },
                 "name": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "refreshToken": {
+                    "type": "string"
+                },
+                "token": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "gorm.DeletedAt": {
+            "type": "object",
+            "properties": {
+                "time": {
+                    "type": "string"
+                },
+                "valid": {
+                    "description": "Valid is true if Time is not NULL",
+                    "type": "boolean"
+                }
+            }
+        },
+        "models.RegisteredTime": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "deleted_at": {
+                    "$ref": "#/definitions/gorm.DeletedAt"
+                },
+                "end_time": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "paused": {
+                    "type": "boolean"
+                },
+                "start_time": {
+                    "type": "string"
+                },
+                "task_id": {
+                    "type": "string"
+                },
+                "total_time": {
+                    "type": "number"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Task": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "deleted_at": {
+                    "$ref": "#/definitions/gorm.DeletedAt"
+                },
+                "done": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "registered_times": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.RegisteredTime"
+                    }
+                },
+                "tag": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
                     "type": "string"
                 }
             }
@@ -142,21 +266,42 @@ const docTemplate = `{
             "properties": {
                 "email": {
                     "type": "string"
-                }
-            }
-        },
-        "routes.MagicLinkResponse": {
-            "type": "object",
-            "properties": {
-                "magicLink": {
+                },
+                "password": {
                     "type": "string"
+                },
+                "setCookie": {
+                    "type": "boolean"
                 }
             }
         },
-        "routes.MagicToken": {
+        "routes.RegistrationRequest": {
             "type": "object",
             "properties": {
-                "magicToken": {
+                "confirmPassword": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "setCookie": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "routes.Tokens": {
+            "type": "object",
+            "properties": {
+                "refreshToken": {
+                    "type": "string"
+                },
+                "token": {
                     "type": "string"
                 }
             }
