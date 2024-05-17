@@ -1,12 +1,12 @@
 package routes
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 	"time"
 	"time-tracker-backend/account"
 	manager "time-tracker-backend/controllers"
+	"time-tracker-backend/models"
 	"time-tracker-backend/x"
 	"time-tracker-backend/x/xjwt"
 
@@ -335,19 +335,6 @@ func OptionsHandler(c *gin.Context) {
 	c.JSON(200, gin.H{})
 }
 
-type Tokens struct {
-	Token        string `json:"token,omitempty"`
-	RefreshToken string `json:"refreshToken,omitempty"`
-}
-
-type RegistrationRequest struct {
-	Name            string `json:"name,omitempty"`
-	Email           string `json:"email,omitempty"`
-	Password        string `json:"password,omitempty"`
-	ConfirmPassword string `json:"confirmPassword,omitempty"`
-	SetCookie       bool   `json:"setCookie,omitempty"`
-}
-
 // CreateUser godoc
 // @Summary      Perform login
 // @Description  Authenticate user
@@ -359,21 +346,21 @@ type RegistrationRequest struct {
 // @Failure      404
 // @Router       /api/v1/registration [post]
 func (tr *TaskRoutes) Registration(c *gin.Context) {
-	u := &RegistrationRequest{}
+	u := &models.RegistrationRequest{}
 	err := c.BindJSON(u)
 	if err != nil {
-		c.JSON(404, err)
+		c.JSON(404, gin.H{"error": err.Error()})
 		return
 	}
 
 	if u.Password != u.ConfirmPassword {
-		c.JSON(404, errors.New("password and confirmPassword does not match"))
+		c.JSON(404, gin.H{"error": "password and confirmPassword do not match"})
 		return
 	}
 
 	err = x.IsValidPassword(u.Password)
 	if err != nil {
-		c.JSON(404, err)
+		c.JSON(404, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -388,16 +375,10 @@ func (tr *TaskRoutes) Registration(c *gin.Context) {
 		c.SetCookie("refreshToken", refreshToken, 9999, "/", "localhost", false, true)
 	}
 
-	c.JSON(200, Tokens{
+	c.JSON(200, &models.Tokens{
 		Token:        token,
 		RefreshToken: refreshToken,
 	})
-}
-
-type LoginRequest struct {
-	Email     string `json:"email,omitempty"`
-	Password  string `json:"password,omitempty"`
-	SetCookie bool   `json:"setCookie,omitempty"`
 }
 
 // Login godoc
@@ -411,7 +392,7 @@ type LoginRequest struct {
 // @Failure      404
 // @Router       /api/v1/login [post]
 func (tr *TaskRoutes) Login(c *gin.Context) {
-	u := &LoginRequest{}
+	u := &models.LoginRequest{}
 	err := c.BindJSON(u)
 	if err != nil {
 		c.JSON(404, "Bad Request")
@@ -429,14 +410,10 @@ func (tr *TaskRoutes) Login(c *gin.Context) {
 		c.SetCookie("refreshToken", refreshToken, 9999, "/", "localhost", false, true)
 	}
 
-	c.JSON(200, Tokens{
+	c.JSON(200, &models.Tokens{
 		Token:        token,
 		RefreshToken: refreshToken,
 	})
-}
-
-type RefreshToken struct {
-	RefreshToken string `json:"refreshToken,omitempty"`
 }
 
 // TODO: esse método pode setar o token e o refresh token no context, para os outros metodos conseguirem acessar mais facilmente
