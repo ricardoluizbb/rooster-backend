@@ -10,6 +10,7 @@ type User struct {
 	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	DeletedAt time.Time `json:"deleted_at,omitempty"`
 
-	Name  string `json:"name,omitempty"`
-	Email string `json:"email,omitempty"`
+	Name     string `json:"name,omitempty"`
+	Email    string `json:"email,omitempty"`
+	Password string `json:"password,omitempty"`
 }

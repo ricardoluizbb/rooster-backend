@@ -2,11 +2,12 @@ package routes
 
 import (
 	"fmt"
-	"net/http"
 	"strconv"
 	"time"
 	"time-tracker-backend/account"
 	manager "time-tracker-backend/controllers"
+	"time-tracker-backend/models"
+	"time-tracker-backend/x"
 	"time-tracker-backend/x/xjwt"
 
 	"github.com/360EntSecGroup-Skylar/excelize"
@@ -46,21 +47,20 @@ func SetupTaskRoutes(r *gin.Engine, taskManager *manager.TaskManager, accountMan
 	taskGroup.OPTIONS("", OptionsHandler)
 
 	api.POST("/login", taskRoutes.Login)
-	api.POST("/create-user", taskRoutes.CreateUser)
-	api.GET("/magic-link", taskRoutes.MagicLink)
+	api.POST("/registration", taskRoutes.Registration)
+
+	api.GET("/whoami", taskRoutes.Authentication, taskRoutes.WhoAmI)
 }
 
-func SetupMobileRoutes(r *gin.Engine, accountManager *account.AccountManager) {
-	mobileRoutes := MobileRoutes{
-		AccountManager: accountManager,
-	}
-
-	api := r.Group("/api/v1")
-
-	mobileGroup := api.Group("/mobile")
-	mobileGroup.POST("/magic-link", mobileRoutes.MagicLinkMobile)
-}
-
+// ListTasks godoc
+// @Summary      List tasks
+// @Description  List all tasks of a account
+// @Tags         tasks
+// @Accept       json
+// @Produce      json
+// @Success      200 {array} models.Task
+// @Failure      404
+// @Router       /api/v1/tasks [get]
 func (tr *TaskRoutes) ListTasks(c *gin.Context) {
 	tasks, err := tr.TaskManager.ListTasks(c)
 	if err != nil {
@@ -335,44 +335,50 @@ func OptionsHandler(c *gin.Context) {
 	c.JSON(200, gin.H{})
 }
 
-type MagicLinkResponse struct {
-	MagicLink string `json:"magicLink"`
-}
-
-type CreateUserRequest struct {
-	Name  string `json:"name,omitempty"`
-	Email string `json:"email,omitempty"`
-}
-
-// Login godoc
+// CreateUser godoc
 // @Summary      Perform login
 // @Description  Authenticate user
 // @Tags         account
 // @Accept       json
 // @Produce      json
-// @Param        UserRequest  		body       CreateUserRequest  	true   "User infos"
-// @Success      200 {object} MagicLinkResponse
+// @Param        UserRequest  		body       RegistrationRequest  	true   "User infos"
+// @Success      200 {object} Tokens
 // @Failure      404
-// @Router       /v1/create-user [post]
-func (tr *TaskRoutes) CreateUser(c *gin.Context) {
-	u := &CreateUserRequest{}
+// @Router       /api/v1/registration [post]
+func (tr *TaskRoutes) Registration(c *gin.Context) {
+	u := &models.RegistrationRequest{}
 	err := c.BindJSON(u)
 	if err != nil {
-		c.JSON(404, err)
+		c.JSON(404, gin.H{"error": err.Error()})
 		return
 	}
 
-	magicLink, err := tr.AccountManager.CreateUser(u.Name, u.Email)
+	if u.Password != u.ConfirmPassword {
+		c.JSON(404, gin.H{"error": "password and confirmPassword do not match"})
+		return
+	}
+
+	err = x.IsValidPassword(u.Password)
+	if err != nil {
+		c.JSON(404, gin.H{"error": err.Error()})
+		return
+	}
+
+	token, refreshToken, err := tr.AccountManager.Registration(c, u.Name, u.Email, u.Password)
 	if err != nil {
 		c.JSON(502, err.Error())
 		return
 	}
 
-	c.JSON(200, MagicLinkResponse{MagicLink: magicLink})
-}
+	if u.SetCookie {
+		c.SetCookie("token", token, 9999, "/", "localhost", false, true)
+		c.SetCookie("refreshToken", refreshToken, 9999, "/", "localhost", false, true)
+	}
 
-type LoginRequest struct {
-	Email string `json:"email,omitempty"`
+	c.JSON(200, &models.Tokens{
+		Token:        token,
+		RefreshToken: refreshToken,
+	})
 }
 
 // Login godoc
@@ -381,83 +387,36 @@ type LoginRequest struct {
 // @Tags         account
 // @Accept       json
 // @Produce      json
-// @Param        email  		body       LoginRequest  	true   "Email"
-// @Success      200 {object} MagicLinkResponse
+// @Param        email  		body       LoginRequest  	true   "Login infos"
+// @Success      200 {object} Tokens
 // @Failure      404
-// @Router       /v1/login [post]
+// @Router       /api/v1/login [post]
 func (tr *TaskRoutes) Login(c *gin.Context) {
-	u := &LoginRequest{}
+	u := &models.LoginRequest{}
 	err := c.BindJSON(u)
 	if err != nil {
 		c.JSON(404, "Bad Request")
 		return
 	}
 
-	magicLink, err := tr.AccountManager.Login(u.Email)
+	token, refreshToken, err := tr.AccountManager.Login(c, u.Email, u.Password)
 	if err != nil {
 		c.JSON(404, err.Error())
 		return
 	}
 
-	c.JSON(200, MagicLinkResponse{MagicLink: magicLink})
-}
-
-type RefreshToken struct {
-	RefreshToken string `json:"refreshToken,omitempty"`
-}
-
-type MagicToken struct {
-	MagicToken string `json:"magicToken,omitempty" form:"magicToken"`
-}
-
-func (tr *TaskRoutes) MagicLink(c *gin.Context) {
-	u := &MagicToken{}
-	err := c.BindQuery(u)
-	if err != nil {
-		c.JSON(404, "Bad Request")
-		return
+	if u.SetCookie {
+		c.SetCookie("token", token, 9999, "/", "localhost", false, true)
+		c.SetCookie("refreshToken", refreshToken, 9999, "/", "localhost", false, true)
 	}
 
-	token, refreshToken, err := tr.AccountManager.MagicLink(u.MagicToken)
-	if err != nil {
-		c.JSON(401, err.Error())
-		return
-	}
-	c.SetCookie("token", token, 9999, "/", "localhost", false, true)
-	c.SetCookie("refreshToken", refreshToken, 9999, "/", "localhost", false, true)
-
-	c.Redirect(http.StatusFound, "http://localhost:9000/")
+	c.JSON(200, &models.Tokens{
+		Token:        token,
+		RefreshToken: refreshToken,
+	})
 }
 
-// Login godoc
-// @Summary      Perform login
-// @Description  Authenticate user
-// @Tags         account
-// @Accept       json
-// @Produce      json
-// @Param        token  		body       MagicToken  	true   "token"
-// @Success      204
-// @Failure      404
-// @Router       /v1/mobile/magic-link [post]
-func (tr *MobileRoutes) MagicLinkMobile(c *gin.Context) {
-	u := &MagicToken{}
-	err := c.BindQuery(u)
-	if err != nil {
-		c.JSON(404, "Bad Request")
-		return
-	}
-
-	token, refreshToken, err := tr.AccountManager.MagicLink(u.MagicToken)
-	if err != nil {
-		c.JSON(401, err.Error())
-		return
-	}
-	c.SetCookie("token", token, 9999, "/", "localhost", false, true)
-	c.SetCookie("refreshToken", refreshToken, 9999, "/", "localhost", false, true)
-
-	c.JSON(http.StatusNoContent, nil)
-}
-
+// TODO: esse método pode setar o token e o refresh token no context, para os outros metodos conseguirem acessar mais facilmente
 func (tr *TaskRoutes) Authentication(c *gin.Context) {
 	token, err := c.Cookie("token")
 	if err != nil {
@@ -487,8 +446,29 @@ func (tr *TaskRoutes) Authentication(c *gin.Context) {
 
 		c.SetCookie("token", token, 9999, "/", "localhost", false, true)
 		c.SetCookie("refreshToken", refreshToken, 9999, "/", "localhost", false, true)
-
 	}
 
 	c.Next()
+}
+
+// WhoAmI godoc
+// @Summary      Perform login
+// @Description  Authenticate user
+// @Tags         account
+// @Accept       json
+// @Produce      json
+// @Success      200 {object} account.User
+// @Failure      404
+// @Router       /api/v1/whoami [get]
+func (tr *TaskRoutes) WhoAmI(c *gin.Context) {
+	// skip error because the authenticator is already validating this
+	token, _ := c.Cookie("token")
+
+	us, err := tr.AccountManager.GetUserByToken(c, token)
+	if err != nil {
+		c.JSON(401, nil)
+		return
+	}
+
+	c.JSON(200, us)
 }

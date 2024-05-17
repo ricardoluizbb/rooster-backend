@@ -10,6 +10,7 @@ type (
 		Create(u *User) error
 		Get(email string) (*User, error)
 		GetUserByRefreshToken(token string) (*User, error)
+		GetUserByToken(token string) (*User, error)
 		Save(u *User) error
 	}
 )
@@ -34,6 +35,13 @@ func (p *Persistence) Get(email string) (*User, error) {
 func (p *Persistence) GetUserByRefreshToken(token string) (*User, error) {
 	var user *User
 	tx := p.DB.Model(&User{}).Where("refresh_token = ?", token).First(&user)
+
+	return user, tx.Error
+}
+
+func (p *Persistence) GetUserByToken(token string) (*User, error) {
+	var user *User
+	tx := p.DB.Model(&User{}).Where("token = ?", token).First(&user)
 
 	return user, tx.Error
 }
