@@ -48,6 +48,7 @@ func SetupTaskRoutes(r *gin.Engine, taskManager *manager.TaskManager, accountMan
 
 	api.POST("/login", taskRoutes.Login)
 	api.POST("/registration", taskRoutes.Registration)
+	api.POST("/logout", taskRoutes.Authentication, taskRoutes.Logout)
 
 	api.GET("/whoami", taskRoutes.Authentication, taskRoutes.WhoAmI)
 }
@@ -414,6 +415,20 @@ func (tr *TaskRoutes) Login(c *gin.Context) {
 		Token:        token,
 		RefreshToken: refreshToken,
 	})
+}
+
+// Logout godoc
+// @Summary      Perform logout
+// @Description  Invalidate user session
+// @Tags         account
+// @Accept       json
+// @Produce      json
+// @Success      200 {object} gin.H{"message": "Logged out successfully"}
+// @Router       /api/v1/logout [post]
+func (tr *TaskRoutes) Logout(c *gin.Context) {
+	c.SetCookie("token", "", -1, "/", "localhost", false, true)
+	c.SetCookie("refreshToken", "", -1, "/", "localhost", false, true)
+	c.JSON(200, gin.H{"message": "Logged out successfully"})
 }
 
 // TODO: esse método pode setar o token e o refresh token no context, para os outros metodos conseguirem acessar mais facilmente
