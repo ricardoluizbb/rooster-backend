@@ -46,7 +46,7 @@ func SetupTaskRoutes(r *gin.Engine, taskManager *manager.TaskManager, accountMan
 	taskGroup.OPTIONS("", OptionsHandler)
 
 	api.POST("/login", taskRoutes.Login)
-	api.POST("/create-user", taskRoutes.CreateUser)
+	api.POST("/registration", taskRoutes.CreateUser)
 	api.GET("/magic-link", taskRoutes.MagicLink)
 }
 

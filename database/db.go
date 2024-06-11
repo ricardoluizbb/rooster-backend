@@ -15,12 +15,6 @@ func ConnectDataBase() (*gorm.DB, error) {
 		return nil, err
 	}
 
-	// Migra as tabelas do banco de dados
-	err = db.AutoMigrate(&models.Task{}, &models.Report{}, &models.User{}, &models.RegisteredTime{})
-	if err != nil {
-		return nil, err
-	}
-
 	return db, nil
 }
 
@@ -31,7 +25,7 @@ func RunMigrations() error {
 	}
 
 	// Migra as tabelas do banco de dados
-	err = db.AutoMigrate(&models.Task{}, &models.Report{}, &models.User{}, &models.RegisteredTime{}, &account.User{})
+	err = db.AutoMigrate(&models.Task{}, &models.Report{}, &models.RegisteredTime{}, &account.User{})
 	if err != nil {
 		return err
 	}
