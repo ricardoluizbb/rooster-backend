@@ -1,14 +1,18 @@
 package routes
 
 import (
+	"context"
 	"log"
-	"time-tracker-backend/account"
 	"time-tracker-backend/config"
+	"time-tracker-backend/controllers"
 	manager "time-tracker-backend/controllers"
 	"time-tracker-backend/database"
+	"time-tracker-backend/models"
 
+	firebase "firebase.google.com/go"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"google.golang.org/api/option"
 )
 
 func SetupRoutes() {
@@ -19,11 +23,28 @@ func SetupRoutes() {
 		log.Fatal("Erro ao conectar " + err.Error())
 	}
 
+	// Crie uma instância do app Firebase
+	opt := option.WithCredentialsFile("./service-account-key.json")
+	app, err := firebase.NewApp(context.Background(), nil, opt)
+	if err != nil {
+		log.Fatalf("Failed to create Firebase app: %v", err)
+	}
+
+	// Crie uma instância do cliente de autenticação Firebase
+	fireAuth, err := app.Auth(context.Background())
+	if err != nil {
+		log.Fatalf("Failed to create Firebase auth client: %v", err)
+	}
+
+	// Crie uma instância do controlador de autenticação usando o construtor
+	authService := &models.AuthService{
+		DB:       database.DB,
+		FireAuth: fireAuth,
+	}
+	authController := controllers.NewAuthController(authService)
+
 	// Criando o gerenciador de tarefas
 	taskManager := manager.NewTaskManager(db)
-
-	p := account.NewPersistence(db)
-	accountManager := account.NewManager(p)
 
 	r := gin.Default()
 
@@ -33,7 +54,6 @@ func SetupRoutes() {
 	cfg.AllowCredentials = true
 	cfg.AllowOrigins = []string{"http://localhost:9000"}
 	r.Use(cors.New(cfg))
-	SetupTaskRoutes(r, taskManager, accountManager)
-	SetupMobileRoutes(r, accountManager)
+	SetupTaskRoutes(r, taskManager, authController)
 	r.Run(config.HttpPort())
 }

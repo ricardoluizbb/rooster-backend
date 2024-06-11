@@ -2,64 +2,12 @@ package routes
 
 import (
 	"fmt"
-	"net/http"
 	"strconv"
 	"time"
-	"time-tracker-backend/account"
-	manager "time-tracker-backend/controllers"
-	"time-tracker-backend/x/xjwt"
 
 	"github.com/360EntSecGroup-Skylar/excelize"
 	"github.com/gin-gonic/gin"
 )
-
-type TaskRoutes struct {
-	TaskManager    *manager.TaskManager
-	AccountManager *account.AccountManager
-}
-
-type MobileRoutes struct {
-	AccountManager *account.AccountManager
-}
-
-func SetupTaskRoutes(r *gin.Engine, taskManager *manager.TaskManager, accountManager *account.AccountManager) {
-	taskRoutes := TaskRoutes{
-		TaskManager:    taskManager,
-		AccountManager: accountManager,
-	}
-
-	api := r.Group("/api/v1")
-
-	taskGroup := api.Group("/tasks", taskRoutes.Authentication)
-	taskGroup.GET("", taskRoutes.ListTasks)
-	taskGroup.GET("/done-tasks", taskRoutes.ListDoneTasks)
-	taskGroup.POST("", taskRoutes.CreateTask)
-	taskGroup.POST("/:taskID/start", taskRoutes.StartTask)
-	taskGroup.POST("/:taskID/pause", taskRoutes.PauseTask)
-	taskGroup.DELETE("/:taskID", taskRoutes.DeleteTask)
-	taskGroup.PUT("/:taskID/complete", taskRoutes.CompleteTask)
-	taskGroup.POST("/:taskID/tags", taskRoutes.AddTagToTask)
-	taskGroup.PUT("/:taskID", taskRoutes.UpdateTaskTitle)
-	taskGroup.GET("/:taskID/total-time", taskRoutes.GetTaskTotalTime)
-	taskGroup.PUT("/:taskID/registered-times/:registeredTimeID", taskRoutes.UpdateRegisteredTime)
-	taskGroup.GET("/export-to-excel", taskRoutes.ExportTaskTotalTimesToExcel)
-	taskGroup.OPTIONS("", OptionsHandler)
-
-	api.POST("/login", taskRoutes.Login)
-	api.POST("/registration", taskRoutes.CreateUser)
-	api.GET("/magic-link", taskRoutes.MagicLink)
-}
-
-func SetupMobileRoutes(r *gin.Engine, accountManager *account.AccountManager) {
-	mobileRoutes := MobileRoutes{
-		AccountManager: accountManager,
-	}
-
-	api := r.Group("/api/v1")
-
-	mobileGroup := api.Group("/mobile")
-	mobileGroup.POST("/magic-link", mobileRoutes.MagicLinkMobile)
-}
 
 func (tr *TaskRoutes) ListTasks(c *gin.Context) {
 	tasks, err := tr.TaskManager.ListTasks(c)
@@ -159,6 +107,8 @@ func (tr *TaskRoutes) AddTagToTask(c *gin.Context) {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
+
+	c.JSON(200, gin.H{"message": "Tag adicionada com sucesso"})
 }
 
 func (tr *TaskRoutes) UpdateTaskTitle(c *gin.Context) {
@@ -333,162 +283,4 @@ func (tr *TaskRoutes) ExportTaskTotalTimesToExcel(c *gin.Context) {
 
 func OptionsHandler(c *gin.Context) {
 	c.JSON(200, gin.H{})
-}
-
-type MagicLinkResponse struct {
-	MagicLink string `json:"magicLink"`
-}
-
-type CreateUserRequest struct {
-	Name  string `json:"name,omitempty"`
-	Email string `json:"email,omitempty"`
-}
-
-// Login godoc
-// @Summary      Perform login
-// @Description  Authenticate user
-// @Tags         account
-// @Accept       json
-// @Produce      json
-// @Param        UserRequest  		body       CreateUserRequest  	true   "User infos"
-// @Success      200 {object} MagicLinkResponse
-// @Failure      404
-// @Router       /v1/create-user [post]
-func (tr *TaskRoutes) CreateUser(c *gin.Context) {
-	u := &CreateUserRequest{}
-	err := c.BindJSON(u)
-	if err != nil {
-		c.JSON(404, err)
-		return
-	}
-
-	magicLink, err := tr.AccountManager.CreateUser(u.Name, u.Email)
-	if err != nil {
-		c.JSON(502, err.Error())
-		return
-	}
-
-	c.JSON(200, MagicLinkResponse{MagicLink: magicLink})
-}
-
-type LoginRequest struct {
-	Email string `json:"email,omitempty"`
-}
-
-// Login godoc
-// @Summary      Perform login
-// @Description  Authenticate user
-// @Tags         account
-// @Accept       json
-// @Produce      json
-// @Param        email  		body       LoginRequest  	true   "Email"
-// @Success      200 {object} MagicLinkResponse
-// @Failure      404
-// @Router       /v1/login [post]
-func (tr *TaskRoutes) Login(c *gin.Context) {
-	u := &LoginRequest{}
-	err := c.BindJSON(u)
-	if err != nil {
-		c.JSON(404, "Bad Request")
-		return
-	}
-
-	magicLink, err := tr.AccountManager.Login(u.Email)
-	if err != nil {
-		c.JSON(404, err.Error())
-		return
-	}
-
-	c.JSON(200, MagicLinkResponse{MagicLink: magicLink})
-}
-
-type RefreshToken struct {
-	RefreshToken string `json:"refreshToken,omitempty"`
-}
-
-type MagicToken struct {
-	MagicToken string `json:"magicToken,omitempty" form:"magicToken"`
-}
-
-func (tr *TaskRoutes) MagicLink(c *gin.Context) {
-	u := &MagicToken{}
-	err := c.BindQuery(u)
-	if err != nil {
-		c.JSON(404, "Bad Request")
-		return
-	}
-
-	token, refreshToken, err := tr.AccountManager.MagicLink(u.MagicToken)
-	if err != nil {
-		c.JSON(401, err.Error())
-		return
-	}
-	c.SetCookie("token", token, 9999, "/", "localhost", false, true)
-	c.SetCookie("refreshToken", refreshToken, 9999, "/", "localhost", false, true)
-
-	c.Redirect(http.StatusFound, "http://localhost:9000/")
-}
-
-// Login godoc
-// @Summary      Perform login
-// @Description  Authenticate user
-// @Tags         account
-// @Accept       json
-// @Produce      json
-// @Param        token  		body       MagicToken  	true   "token"
-// @Success      204
-// @Failure      404
-// @Router       /v1/mobile/magic-link [post]
-func (tr *MobileRoutes) MagicLinkMobile(c *gin.Context) {
-	u := &MagicToken{}
-	err := c.BindQuery(u)
-	if err != nil {
-		c.JSON(404, "Bad Request")
-		return
-	}
-
-	token, refreshToken, err := tr.AccountManager.MagicLink(u.MagicToken)
-	if err != nil {
-		c.JSON(401, err.Error())
-		return
-	}
-	c.SetCookie("token", token, 9999, "/", "localhost", false, true)
-	c.SetCookie("refreshToken", refreshToken, 9999, "/", "localhost", false, true)
-
-	c.JSON(http.StatusNoContent, nil)
-}
-
-func (tr *TaskRoutes) Authentication(c *gin.Context) {
-	token, err := c.Cookie("token")
-	if err != nil {
-		c.JSON(401, "token is empty")
-		return
-	}
-
-	err = xjwt.VerifyToken(token)
-	if err != nil {
-		refreshToken, err := c.Cookie("refreshToken")
-		if err != nil {
-			c.JSON(401, "refreshToken is empty")
-			return
-		}
-
-		err = xjwt.VerifyToken(refreshToken)
-		if err != nil {
-			c.JSON(401, "refreshToken is invalid")
-			return
-		}
-
-		token, refreshToken, err := tr.AccountManager.RefreshToken(refreshToken)
-		if err != nil {
-			c.JSON(401, "generate refreshtoken error")
-			return
-		}
-
-		c.SetCookie("token", token, 9999, "/", "localhost", false, true)
-		c.SetCookie("refreshToken", refreshToken, 9999, "/", "localhost", false, true)
-
-	}
-
-	c.Next()
 }

@@ -1,12 +1,18 @@
 package database
 
 import (
-	"time-tracker-backend/account"
 	"time-tracker-backend/config"
 	"time-tracker-backend/models"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+
+	firebaseAuth "firebase.google.com/go/v4/auth"
+)
+
+var (
+	DB           *gorm.DB
+	FirebaseAuth *firebaseAuth.Client
 )
 
 func ConnectDataBase() (*gorm.DB, error) {
@@ -25,7 +31,7 @@ func RunMigrations() error {
 	}
 
 	// Migra as tabelas do banco de dados
-	err = db.AutoMigrate(&models.Task{}, &models.Report{}, &models.RegisteredTime{}, &account.User{})
+	err = db.AutoMigrate(&models.Task{}, &models.Report{}, &models.RegisteredTime{}, &models.User{})
 	if err != nil {
 		return err
 	}
