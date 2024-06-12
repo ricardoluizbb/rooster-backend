@@ -38,7 +38,7 @@ func SetupRoutes() {
 
 	// Crie uma instância do controlador de autenticação usando o construtor
 	authService := &models.AuthService{
-		DB:       database.DB,
+		DB:       db,
 		FireAuth: fireAuth,
 	}
 	authController := controllers.NewAuthController(authService)

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"log"
-	"time"
 
 	"firebase.google.com/go/auth"
 	"github.com/google/uuid"
@@ -13,13 +12,10 @@ import (
 )
 
 type User struct {
-	ID        string    `json:"id" gorm:"primaryKey"`
-	Name      string    `json:"name"`
-	Email     string    `json:"email"`
-	Password  string    `json:"password"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
-	DeletedAt time.Time `json:"deletedAt"`
+	ID       string `json:"id" gorm:"primaryKey"`
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 // AuthService provides authentication services
@@ -56,14 +52,14 @@ func (s *AuthService) Login(email, password string) (string, error) {
 	return token, nil
 }
 
-// Register creates a new user with the provided credentials and returns token
-func (s *AuthService) Register(email, password string) (string, error) {
+func (s *AuthService) Register(name, email, password string) (string, error) {
 	// Check if the user with the email already exists
 	var user User
-	if err := s.DB.Raw("SELECT id, email, password FROM users WHERE email = ?", email).Scan(&user).Error; err != nil {
-		if err != gorm.ErrRecordNotFound {
-			log.Printf("failed to get user by email from database: %v", err)
-			return "", errors.New("internal server error")
+	tx := s.DB.Where("email = ?", email).First(&user)
+	if tx.Error != nil {
+		if !errors.Is(tx.Error, gorm.ErrRecordNotFound) {
+			log.Printf("failed to get user by email from database: %v", tx.Error)
+			return "", tx.Error
 		}
 	}
 
@@ -82,7 +78,7 @@ func (s *AuthService) Register(email, password string) (string, error) {
 	}
 
 	// Create a new user in the database
-	if err := s.DB.Exec("INSERT INTO users (id, email, password) VALUES (?, ?, ?)", uid, email, hashedPassword).Error; err != nil {
+	if err := s.DB.Exec("INSERT INTO users (id, name, email, password) VALUES (?, ?, ?, ?)", uid, name, email, hashedPassword).Error; err != nil {
 		log.Printf("failed to insert user into database: %v", err)
 		return "", errors.New("internal server error")
 	}

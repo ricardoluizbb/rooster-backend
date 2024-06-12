@@ -17,23 +17,23 @@ func NewAuthController(authService *models.AuthService) *AuthController {
 
 func (c *AuthController) Login(ctx *gin.Context) {
 	// Get the email and password from the request body
-	var registrationData struct {
+	var loginData struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
 	}
 
-	if err := ctx.ShouldBindJSON(&registrationData); err != nil {
+	if err := ctx.ShouldBindJSON(&loginData); err != nil {
 		ctx.AbortWithStatusJSON(400, gin.H{"error": "Invalid request body"})
 		return
 	}
 
-	if registrationData.Email == "" || registrationData.Password == "" {
+	if loginData.Email == "" || loginData.Password == "" {
 		ctx.AbortWithStatusJSON(400, gin.H{"error": "Email and password are required"})
 		return
 	}
 
-	// Register the new user and get a custom token for the user
-	customToken, err := c.authService.Login(registrationData.Email, registrationData.Password)
+	// Authenticate the user and get a custom token for the user
+	customToken, err := c.authService.Login(loginData.Email, loginData.Password)
 	if err != nil {
 		ctx.AbortWithStatusJSON(400, gin.H{"error": err.Error()})
 		return
@@ -45,8 +45,9 @@ func (c *AuthController) Login(ctx *gin.Context) {
 
 // Register handles the POST /register route and creates a new user with the provided credentials
 func (c *AuthController) Register(ctx *gin.Context) {
-	// Get the email and password from the request body
+	// Get the name, email, and password from the request body
 	var registrationData struct {
+		Name     string `json:"name"`
 		Email    string `json:"email"`
 		Password string `json:"password"`
 	}
@@ -56,13 +57,13 @@ func (c *AuthController) Register(ctx *gin.Context) {
 		return
 	}
 
-	if registrationData.Email == "" || registrationData.Password == "" {
-		ctx.AbortWithStatusJSON(400, gin.H{"error": "Email and password are required"})
+	if registrationData.Name == "" || registrationData.Email == "" || registrationData.Password == "" {
+		ctx.AbortWithStatusJSON(400, gin.H{"error": "Name, email, and password are required"})
 		return
 	}
 
 	// Register the new user and get a custom token for the user
-	customToken, err := c.authService.Register(registrationData.Email, registrationData.Password)
+	customToken, err := c.authService.Register(registrationData.Name, registrationData.Email, registrationData.Password)
 	if err != nil {
 		ctx.AbortWithStatusJSON(400, gin.H{"error": err.Error()})
 		return
